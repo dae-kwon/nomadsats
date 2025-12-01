@@ -21,12 +21,9 @@ const BitcoinLogo = () => (
 );
 
 const TetherLogo = () => (
-  // Official Tether Logo SVG
-  <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
-    <g fill="none" fillRule="evenodd">
-      <circle cx="16" cy="16" r="16" fill="#26A17B" />
-      <path fill="#FFF" d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v2.644c.254.018.982.061 1.988.061 1.207 0 1.812-.05 1.925-.06v-2.643c3.88.173 6.775.85 6.775 1.658 0 .81-2.895 1.485-6.775 1.657m0-3.59v-2.366h5.414V7.819H8.595v3.608h5.414v2.365c-4.4.202-7.709 1.074-7.709 2.118 0 1.044 3.309 1.915 7.709 2.118v7.582h3.913v-7.584c4.393-.202 7.694-1.073 7.694-2.116 0-1.043-3.301-1.914-7.694-2.117" />
-    </g>
+  <svg viewBox="0 0 339.43 295.27" className="w-full h-full">
+    <path d="M62.15,1.45l-61.89,130a2.52,2.52,0,0,0,.54,2.94L167.95,294.56a2.55,2.55,0,0,0,3.53,0L338.63,134.4a2.52,2.52,0,0,0,.54-2.94l-61.89-130A2.5,2.5,0,0,0,275,0H64.45a2.5,2.5,0,0,0-2.3,1.45h0Z" fill="#50af95" fillRule="evenodd" />
+    <path d="M191.19,144.8v0c-1.2.09-7.4,0.46-21.23,0.46-11,0-18.81-.33-21.55-0.46v0c-42.51-1.87-74.24-9.27-74.24-18.13s31.73-16.25,74.24-18.15v28.91c2.78,0.2,10.74.67,21.74,0.67,13.2,0,19.81-.55,21-0.66v-28.9c42.42,1.89,74.08,9.29,74.08,18.13s-31.65,16.24-74.08,18.12h0Zm0-39.25V79.68h59.2V40.23H89.21V79.68H148.4v25.86c-48.11,2.21-84.29,11.74-84.29,23.16s36.18,20.94,84.29,23.16v82.9h42.78V151.83c48-2.21,84.12-11.73,84.12-23.14s-36.09-20.93-84.12-23.15h0Zm0,0h0Z" fill="#fff" fillRule="evenodd" />
   </svg>
 );
 
@@ -115,6 +112,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => getStorage('isDarkMode',
     (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ?? true
   ));
+  const [fontSize, setFontSize] = useState(() => getStorage('fontSize', 24)); // Default 24px (text-2xl)
 
   const [isAdding, setIsAdding] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
@@ -131,6 +129,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('activeCurrencies', JSON.stringify(activeCurrencies)); }, [activeCurrencies]);
   useEffect(() => { localStorage.setItem('userPremiums', JSON.stringify(userPremiums)); }, [userPremiums]);
   useEffect(() => { localStorage.setItem('isP2PMode', JSON.stringify(isP2PMode)); }, [isP2PMode]);
+  useEffect(() => { localStorage.setItem('fontSize', JSON.stringify(fontSize)); }, [fontSize]);
 
   // Listen for system theme changes if no user preference
   useEffect(() => {
@@ -236,7 +235,7 @@ export default function App() {
 
   const calculateValue = (targetCode) => {
     if (targetCode === anchorCode) return anchorAmount;
-    const numericAnchorAmount = parseFloat(String(anchorAmount).replace(/,/g, '')) || 0;
+    const numericAnchorAmount = parseFloat(String(anchorAmount).replace(/[,\s\u2009]/g, '')) || 0;
     const anchorRate = getRate(anchorCode);
     const anchorPremiumFactor = 1 + (getPremiumPercent(anchorCode) / 100);
 
@@ -249,11 +248,16 @@ export default function App() {
 
   const handleInputChange = (code, value) => {
     const rule = CURRENCY_RULES[code] || CURRENCY_RULES.default;
-    const raw = value.replace(/,/g, '');
+    // Remove spaces (standard and thin) and commas
+    const raw = value.replace(/[,\s\u2009]/g, '');
+
     if (rule.decimals === 0 && !/^\d*$/.test(raw)) return;
     if (rule.decimals > 0 && !/^\d*\.?\d*$/.test(raw)) return;
+
     const parts = raw.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    // Add THIN space as thousand separator
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+
     setAnchorCode(code);
     setAnchorAmount(parts.join('.'));
   };
@@ -269,10 +273,11 @@ export default function App() {
     let num = parseFloat(val);
     if (isNaN(num) || num === 0) return '0';
     if (rule.decimals === 0) num = Math.round(num);
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: rule.decimals,
-      maximumFractionDigits: rule.decimals,
-    }).format(num);
+
+    // Custom formatting: thin space as separator
+    const parts = num.toFixed(rule.decimals).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+    return parts.join('.');
   };
 
   const handleFocusCurrency = (code) => {
@@ -282,10 +287,12 @@ export default function App() {
     const rule = CURRENCY_RULES[code] || CURRENCY_RULES.default;
     if (rule.decimals === 0) val = Math.round(val);
     else val = parseFloat(val.toFixed(rule.decimals));
+
     setAnchorCode(code);
-    setAnchorAmount(new Intl.NumberFormat('en-US', {
-      maximumFractionDigits: rule.decimals, useGrouping: true
-    }).format(val));
+    // Format with thin space separator
+    const parts = val.toFixed(rule.decimals).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+    setAnchorAmount(parts.join('.'));
   };
 
   // --- Drag and Drop ---
@@ -311,6 +318,48 @@ export default function App() {
   const onDragEnd = () => {
     dragItem.current = null;
     dragOverItem.current = null;
+  };
+
+  // --- Swipe Logic (Touch + Mouse) ---
+  const touchStart = useRef(null);
+  const [swipingId, setSwipingId] = useState(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+
+  const getClientX = (e) => {
+    return e.targetTouches ? e.targetTouches[0].clientX : e.clientX;
+  };
+
+  const onStart = (e, code) => {
+    if (isReordering) return;
+    touchStart.current = getClientX(e);
+    setSwipingId(code);
+    setSwipeOffset(0);
+  };
+
+  const onMove = (e) => {
+    if (!touchStart.current || !swipingId) return;
+    const currentX = getClientX(e);
+    const diff = currentX - touchStart.current;
+    // Only allow left swipe
+    if (diff < 0) {
+      setSwipeOffset(diff);
+    }
+  };
+
+  const onEnd = () => {
+    if (!swipingId) return;
+
+    if (swipeOffset < -100) {
+      // Threshold met, delete
+      if (activeCurrencies.length > 1) {
+        handleRemoveCurrency(swipingId);
+      }
+    }
+
+    // Reset
+    setSwipingId(null);
+    setSwipeOffset(0);
+    touchStart.current = null;
   };
 
   const moveItem = (index, direction) => {
@@ -343,7 +392,8 @@ export default function App() {
   const getCurrencyIcon = (info) => {
     if (info.flag === 'BTC_LOGO') return <div className="w-6 h-6"><BitcoinLogo /></div>;
     if (info.flag === 'USDT_LOGO') return <div className="w-6 h-6"><TetherLogo /></div>;
-    return <span className="text-2xl leading-none select-none">{info.flag}</span>;
+    // UPDATED: text-3xl for bigger flags
+    return <span className="text-3xl leading-none select-none">{info.flag}</span>;
   };
 
   // Theme
@@ -398,121 +448,166 @@ export default function App() {
                     : `${theme.cardBg} ${theme.cardBorder} ${isReordering ? '' : theme.cardHover}`
                   }
                   ${isReordering ? 'cursor-move' : 'cursor-default'}
+                  overflow-hidden
                 `}
+                onTouchStart={(e) => onStart(e, code)}
+                onTouchMove={onMove}
+                onTouchEnd={onEnd}
+                onMouseDown={(e) => onStart(e, code)}
+                onMouseMove={onMove}
+                onMouseUp={onEnd}
+                onMouseLeave={onEnd}
               >
-                <div className="flex-shrink-0 z-10 flex items-center gap-2">
-                  {isReordering && (
-                    <div className="flex flex-col items-center mr-1 gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); moveItem(index, 'up') }} disabled={index === 0} className={`p-0.5 rounded ${index === 0 ? 'opacity-20' : 'hover:bg-slate-700'} ${theme.subText}`}>
-                        <ChevronUp size={20} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); moveItem(index, 'down') }} disabled={index === activeCurrencies.length - 1} className={`p-0.5 rounded ${index === activeCurrencies.length - 1 ? 'opacity-20' : 'hover:bg-slate-700'} ${theme.subText}`}>
-                        <ChevronDown size={20} />
-                      </button>
-                    </div>
-                  )}
-                  <div className={`flex flex-col items-center justify-center w-10 text-center`}>
-                    {/* UPDATED: w-7 h-7 for slightly bigger flag presence */}
-                    <div className="w-7 h-7 flex items-center justify-center">
-                      {getCurrencyIcon(info)}
-                    </div>
+                {/* Swipe Background (Trash) */}
+                <div className={`absolute inset-0 flex items-center justify-end px-6 bg-red-500 transition-opacity duration-200 ${swipingId === code && swipeOffset < 0 ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className="text-white font-bold flex items-center gap-2">
+                    <span>Delete</span>
+                    <X size={20} />
                   </div>
                 </div>
 
-                <div className="flex-1 relative z-10 pl-2 flex flex-row items-center justify-end gap-2">
-                  <div className={`
+                {/* Card Content */}
+                <div
+                  className="flex items-center justify-between w-full relative z-10 transition-transform duration-75"
+                  style={{ transform: swipingId === code ? `translateX(${swipeOffset}px)` : 'translateX(0)' }}
+                >
+                  <div className="flex-shrink-0 z-10 flex items-center gap-2">
+                    {isReordering && (
+                      <div className="flex flex-col items-center mr-1 gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); moveItem(index, 'up') }} disabled={index === 0} className={`p-0.5 rounded ${index === 0 ? 'opacity-20' : 'hover:bg-slate-700'} ${theme.subText}`}>
+                          <ChevronUp size={20} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); moveItem(index, 'down') }} disabled={index === activeCurrencies.length - 1} className={`p-0.5 rounded ${index === activeCurrencies.length - 1 ? 'opacity-20' : 'hover:bg-slate-700'} ${theme.subText}`}>
+                          <ChevronDown size={20} />
+                        </button>
+                      </div>
+                    )}
+                    <div className={`flex flex-col items-center justify-center w-10 text-center`}>
+                      {/* UPDATED: w-7 h-7 for slightly bigger flag presence */}
+                      <div className="w-7 h-7 flex items-center justify-center">
+                        {getCurrencyIcon(info)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 relative z-10 pl-2 flex flex-row items-center justify-end gap-2">
+                    <div className={`
                     relative rounded-xl flex items-center px-3 py-2 border transition-colors flex-1 min-w-0
                     ${isAnchor ? `${theme.inputBg} ${theme.inputBorder}` : `${theme.inputBg} border-transparent`}
-                    ${isReordering ? 'opacity-50 pointer-events-none' : ''} 
+                    ${isReordering ? 'opacity-50 pointer-events-none' : ''}
                   `}>
-                    <input
-                      type="text"
-                      disabled={isReordering}
-                      inputMode={CURRENCY_RULES[code]?.decimals === 0 ? "numeric" : "decimal"}
-                      value={displayValue}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (code !== anchorCode) {
-                          handleFocusCurrency(code);
-                        }
-                      }}
-                      onFocus={() => {
-                        if (code !== anchorCode) {
-                          handleFocusCurrency(code);
-                        }
-                      }}
-                      onChange={(e) => handleInputChange(code, e.target.value)}
-                      className={`w-full bg-transparent text-right font-mono text-xl sm:text-2xl outline-none font-bold z-10 cursor-text min-w-0 ${isDarkMode ? 'text-white placeholder-slate-600' : 'text-gray-900 placeholder-gray-300'}`}
-                    />
-                    <span className={`ml-2 ${theme.subText} font-bold text-xs w-8 text-right flex-shrink-0`}>
-                      {info.code}
-                    </span>
-                  </div>
-
-                  {isP2PMode && !isReordering && (
-                    <div
-                      className={`flex flex-col justify-center items-center ${theme.inputBg} ${theme.cardBorder} border rounded-lg w-14 h-full shrink-0`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
                       <input
                         type="text"
-                        placeholder="0"
-                        value={userPremiums[code] || ''}
-                        onChange={(e) => handlePremiumChange(code, e.target.value)}
-                        className={`bg-transparent w-full text-center text-xs font-mono font-bold outline-none p-1 ${theme.accentText}`}
+                        disabled={isReordering}
+                        inputMode={CURRENCY_RULES[code]?.decimals === 0 ? "numeric" : "decimal"}
+                        value={displayValue}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (code !== anchorCode) {
+                            handleFocusCurrency(code);
+                          }
+                        }}
+                        onFocus={() => {
+                          if (code !== anchorCode) {
+                            handleFocusCurrency(code);
+                          }
+                        }}
+                        onChange={(e) => handleInputChange(code, e.target.value)}
+                        style={{ fontSize: `${fontSize}px`, lineHeight: '1.2' }}
+                        className={`w-full bg-transparent text-right font-mono outline-none font-bold z-10 cursor-text min-w-0 ${isDarkMode ? 'text-white placeholder-slate-600' : 'text-gray-900 placeholder-gray-300'}`}
                       />
-                      <span className={`text-[9px] ${theme.subText} font-bold -mt-1`}>P2P%</span>
+                      <span className={`ml-2 ${theme.subText} font-bold text-xs w-8 text-right flex-shrink-0`}>
+                        {info.code}
+                      </span>
                     </div>
+
+                    {isP2PMode && !isReordering && (
+                      <div
+                        className={`flex flex-col justify-center items-center ${theme.inputBg} ${theme.cardBorder} border rounded-lg w-14 h-full shrink-0`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          placeholder="0"
+                          value={userPremiums[code] || ''}
+                          onChange={(e) => handlePremiumChange(code, e.target.value)}
+                          className={`bg-transparent w-full text-center text-xs font-mono font-bold outline-none p-1 ${theme.accentText}`}
+                        />
+                        <span className={`text-[9px] ${theme.subText} font-bold -mt-1`}>P2P%</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {isReordering && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRemoveCurrency(code); }}
+                      className={`absolute -right-2 -top-2 p-1.5 rounded-full shadow-md border z-50 transition-all scale-100 opacity-100 ${isDarkMode ? 'bg-[#2f3344] border-[#3b3f54] text-slate-400 hover:text-red-400 hover:bg-[#363a4d]' : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
+                      title="Remove"
+                    >
+                      <X size={14} strokeWidth={2.5} />
+                    </button>
                   )}
                 </div>
-
-                {isReordering && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRemoveCurrency(code); }}
-                    className={`absolute -right-2 -top-2 p-1.5 rounded-full shadow-md border z-50 transition-all scale-100 opacity-100 ${isDarkMode ? 'bg-[#2f3344] border-[#3b3f54] text-slate-400 hover:text-red-400 hover:bg-[#363a4d]' : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
-                    title="Remove"
-                  >
-                    <X size={14} strokeWidth={2.5} />
-                  </button>
-                )}
               </div>
             );
           })}
         </div>
 
         <div className="relative z-[100]" ref={addDropdownRef}>
-          {/* Dropdown Menu */}
+          {/* Input Field (replaces Button) */}
+          <div
+            className={`w-full font-medium py-3 rounded-2xl border flex items-center gap-3 px-4 transition-colors shadow-sm
+              ${isDarkMode ? 'bg-[#252836] border-[#2f3344]' : 'bg-white border-gray-200'}
+              ${isReordering ? 'opacity-50 cursor-not-allowed' : ''}
+              ${isAdding ? (isDarkMode ? 'border-orange-500/50' : 'border-orange-200') : ''}
+            `}
+          >
+            <Plus size={18} className={theme.subText} />
+            <input
+              type="text"
+              disabled={isReordering}
+              placeholder="Add a currency"
+              value={searchTerm}
+              onFocus={() => setIsAdding(true)}
+              onClick={() => setIsAdding(true)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (!isAdding) setIsAdding(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const term = searchTerm.trim().toUpperCase();
+                  const exact = ALL_CURRENCIES.find(c => c.code === term);
+                  if (exact && !activeCurrencies.includes(exact.code)) {
+                    handleAddCurrency(exact.code);
+                  } else {
+                    const searchLower = searchTerm.toLowerCase();
+                    const filtered = ALL_CURRENCIES.filter(c =>
+                      !activeCurrencies.includes(c.code) &&
+                      (c.code.toLowerCase().includes(searchLower) || c.name.toLowerCase().includes(searchLower) || c.keywords?.some(k => k.includes(searchLower)))
+                    );
+                    if (filtered.length > 0) {
+                      handleAddCurrency(filtered[0].code);
+                    }
+                  }
+                }
+                if (e.key === 'Escape') {
+                  setIsAdding(false);
+                  e.currentTarget.blur();
+                }
+              }}
+              className={`bg-transparent outline-none w-full text-base font-medium ${isDarkMode ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
+            />
+            {searchTerm && (
+              <button onClick={() => { setSearchTerm(''); setIsAdding(false); }} className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-[#2f3344] text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}>
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown Menu (List Only) */}
           {isAdding && (
             <div className={`absolute top-full left-0 right-0 mt-2 max-h-[50vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden animate-in slide-in-from-top-2 duration-200 ${theme.modalBg} ${theme.modalBorder}`}>
-              {/* Search Header */}
-              <div className={`p-3 border-b ${theme.divider} flex items-center gap-2 shrink-0`}>
-                <Search className={theme.subText} size={16} />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search currency..."
-                  className={`bg-transparent outline-none w-full text-sm font-medium ${isDarkMode ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const searchLower = searchTerm.toLowerCase();
-                      const filtered = ALL_CURRENCIES.filter(c =>
-                        !activeCurrencies.includes(c.code) &&
-                        (c.code.toLowerCase().includes(searchLower) || c.name.toLowerCase().includes(searchLower) || c.keywords?.some(k => k.includes(searchLower)))
-                      );
-                      if (filtered.length > 0) {
-                        handleAddCurrency(filtered[0].code);
-                      }
-                    }
-                  }}
-                />
-                <button onClick={() => setIsAdding(false)} className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-[#2f3344] text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}>
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Compact List */}
               <div className="overflow-y-auto flex-1 p-1">
                 {ALL_CURRENCIES
                   .filter(c => {
@@ -544,27 +639,18 @@ export default function App() {
                     All available currencies added
                   </div>
                 )}
+                {ALL_CURRENCIES.filter(c => !activeCurrencies.includes(c.code) && (c.code.toLowerCase().includes(searchTerm.toLowerCase()) || c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.keywords?.some(k => k.includes(searchTerm.toLowerCase())))).length === 0 && !ALL_CURRENCIES.every(c => activeCurrencies.includes(c.code)) && (
+                  <div className={`p-4 text-center text-xs ${theme.subText}`}>
+                    No currency found
+                  </div>
+                )}
               </div>
             </div>
           )}
-
-          {/* Add Button */}
-          <button
-            disabled={isReordering}
-            onClick={() => setIsAdding(!isAdding)}
-            className={`w-full font-medium py-3 rounded-2xl border flex items-center justify-between px-6 transition-colors shadow-sm 
-              ${isDarkMode ? 'bg-[#252836] hover:bg-[#2f3344] text-slate-300 border-[#2f3344]' : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-200'}
-              ${isReordering ? 'opacity-50 cursor-not-allowed' : ''}
-              ${isAdding ? (isDarkMode ? 'bg-[#2f3344]' : 'bg-gray-50') : ''}
-            `}
-          >
-            <span>Add a currency</span>
-            {isAdding ? <ChevronDown size={18} className={theme.subText} /> : <Plus size={18} className={theme.subText} />}
-          </button>
         </div>
 
         {/* Footer Wrapper */}
-        <div className="flex flex-col gap-2 mt-2 relative z-10 pb-4">
+        <div className="flex flex-col gap-2 mt-auto relative z-10 pb-4">
           <div className="flex gap-2">
             <button
               onClick={() => setIsP2PMode(!isP2PMode)}
@@ -598,6 +684,35 @@ export default function App() {
             </button>
           </div>
 
+          <div className="flex justify-between items-center gap-3 w-full">
+            {/* Font Size Controls */}
+            <div className={`flex items-center rounded-xl border ${theme.btnDefault} overflow-hidden flex-1 h-12`}>
+              <button
+                onClick={() => setFontSize(prev => Math.max(12, prev - 2))}
+                className={`flex-1 h-full hover:bg-opacity-80 transition-colors border-r ${theme.divider} flex items-center justify-center`}
+              >
+                <span className="text-xs font-bold">A-</span>
+              </button>
+              <button
+                onClick={() => setFontSize(prev => Math.min(48, prev + 2))}
+                className={`flex-1 h-full hover:bg-opacity-80 transition-colors flex items-center justify-center`}
+              >
+                <span className="text-sm font-bold">A+</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                const newVal = !isDarkMode;
+                setIsDarkMode(newVal);
+                localStorage.setItem('isDarkMode', JSON.stringify(newVal));
+              }}
+              className={`flex-1 h-12 rounded-xl text-xs font-medium border transition-colors flex items-center justify-center ${theme.btnDefault} ${theme.btnHover}`}
+            >
+              {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+          </div>
+
           <div className={`group relative w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-xs font-medium border ${theme.btnDefault} cursor-default select-none`}>
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]"></span>
             <span>
@@ -615,19 +730,6 @@ export default function App() {
               </div>
               <div className={`absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent ${isDarkMode ? 'border-t-[#252836]' : 'border-t-white'}`}></div>
             </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                const newVal = !isDarkMode;
-                setIsDarkMode(newVal);
-                localStorage.setItem('isDarkMode', JSON.stringify(newVal));
-              }}
-              className={`p-2 rounded-lg text-xs font-medium border transition-colors ${theme.btnDefault} ${theme.btnHover}`}
-            >
-              {isDarkMode ? <Moon size={14} /> : <Sun size={14} />}
-            </button>
           </div>
         </div>
 
