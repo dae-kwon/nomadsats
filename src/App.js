@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, X, Search, RefreshCw, ArrowUpDown, Info, Wallet, AlertTriangle, Percent, GripVertical, Moon, Sun, List, Check, Pencil, ChevronUp, ChevronDown, Clock, Database } from 'lucide-react';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 /**
  * Live Multi-Currency Converter
