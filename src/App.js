@@ -40,6 +40,13 @@ const CURRENCY_RULES = {
   TWD: { decimals: 0, threshold: 1 },
   PYG: { decimals: 0, threshold: 1 },
   PHP: { decimals: 0, threshold: 1 },
+  THB: { decimals: 0, threshold: 1 },
+  COP: { decimals: 0, threshold: 1 },
+  RUB: { decimals: 0, threshold: 1 },
+  CNY: { decimals: 0, threshold: 1 },
+  ARS: { decimals: 0, threshold: 1 },
+  NGN: { decimals: 0, threshold: 1 },
+  TRY: { decimals: 0, threshold: 1 },
   USDT: { decimals: 2, threshold: 0.01 },
   BTC: { decimals: 8, threshold: 0.00000001 },
 };
@@ -120,6 +127,7 @@ export default function App() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showSourceInfo, setShowSourceInfo] = useState(false);
 
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
@@ -235,7 +243,7 @@ export default function App() {
 
   const calculateValue = (targetCode) => {
     if (targetCode === anchorCode) return anchorAmount;
-    const numericAnchorAmount = parseFloat(String(anchorAmount).replace(/[,\s\u2009]/g, '')) || 0;
+    const numericAnchorAmount = parseFloat(String(anchorAmount).replace(/,/g, '')) || 0;
     const anchorRate = getRate(anchorCode);
     const anchorPremiumFactor = 1 + (getPremiumPercent(anchorCode) / 100);
 
@@ -248,15 +256,20 @@ export default function App() {
 
   const handleInputChange = (code, value) => {
     const rule = CURRENCY_RULES[code] || CURRENCY_RULES.default;
-    // Remove spaces (standard and thin) and commas
-    const raw = value.replace(/[,\s\u2009]/g, '');
+    const raw = value.replace(/,/g, '');
 
     if (rule.decimals === 0 && !/^\d*$/.test(raw)) return;
     if (rule.decimals > 0 && !/^\d*\.?\d*$/.test(raw)) return;
 
     const parts = raw.split('.');
-    // Add THIN space as thousand separator
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+
+    // Prevent multiple leading zeros (e.g. 00, 01, 05 -> 0, 1, 5)
+    if (parts[0].length > 1 && parts[0].startsWith('0')) {
+      parts[0] = parts[0].replace(/^0+/, '');
+      if (parts[0] === '') parts[0] = '0';
+    }
+
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
     setAnchorCode(code);
     setAnchorAmount(parts.join('.'));
@@ -270,13 +283,20 @@ export default function App() {
   const formatDisplayValue = (val, code) => {
     const rule = CURRENCY_RULES[code] || CURRENCY_RULES.default;
     if (code === anchorCode) return val;
+
     let num = parseFloat(val);
     if (isNaN(num) || num === 0) return '0';
     if (rule.decimals === 0) num = Math.round(num);
 
-    // Custom formatting: thin space as separator
-    const parts = num.toFixed(rule.decimals).split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+    const fixed = num.toFixed(rule.decimals);
+    const parts = fixed.split('.');
+
+    // Hide decimals if they are all zero
+    if (parts[1] && /^0+$/.test(parts[1])) {
+      return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return parts.join('.');
   };
 
@@ -289,9 +309,8 @@ export default function App() {
     else val = parseFloat(val.toFixed(rule.decimals));
 
     setAnchorCode(code);
-    // Format with thin space separator
     const parts = val.toFixed(rule.decimals).split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     setAnchorAmount(parts.join('.'));
   };
 
@@ -393,7 +412,7 @@ export default function App() {
     if (info.flag === 'BTC_LOGO') return <div className="w-6 h-6"><BitcoinLogo /></div>;
     if (info.flag === 'USDT_LOGO') return <div className="w-6 h-6"><TetherLogo /></div>;
     // UPDATED: text-3xl for bigger flags
-    return <span className="text-3xl leading-none select-none">{info.flag}</span>;
+    return <span className="text-[28px] leading-none select-none">{info.flag}</span>;
   };
 
   // Theme
@@ -419,9 +438,14 @@ export default function App() {
 
   return (
     // UPDATED: min-h-[100dvh] for mobile viewport fix
-    <div className={`min-h-[100dvh] ${theme.bg} ${theme.text} font-sans flex flex-col items-center justify-between p-2 sm:p-4 transition-colors duration-300 relative overflow-hidden pt-2`}>
+    <div className={`min-h-[100dvh] ${theme.bg} ${theme.text} font-sans flex flex-col items-center justify-between p-4 transition-colors duration-300 relative overflow-hidden pt-6`}>
 
-      <div className={`absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-orange-500/20 rounded-full blur-[80px] pointer-events-none animate-pulse-slow ${isDarkMode ? 'opacity-60' : 'opacity-40'}`}></div>
+      {/* Orb 1 */}
+      <div className={`absolute top-1/4 left-1/2 w-[300px] h-[300px] bg-orange-500/20 rounded-full blur-[80px] pointer-events-none animate-float-1`}></div>
+      {/* Orb 2 */}
+      <div className={`absolute top-3/4 left-1/4 w-[250px] h-[250px] bg-orange-400/15 rounded-full blur-[60px] pointer-events-none animate-float-2`}></div>
+      {/* Orb 3 */}
+      <div className={`absolute top-1/2 left-3/4 w-[200px] h-[200px] bg-orange-600/15 rounded-full blur-[70px] pointer-events-none animate-float-3`}></div>
 
       <div className="w-full max-w-md flex flex-col gap-4 relative z-10 flex-1">
 
@@ -448,7 +472,7 @@ export default function App() {
                     : `${theme.cardBg} ${theme.cardBorder} ${isReordering ? '' : theme.cardHover}`
                   }
                   ${isReordering ? 'cursor-move' : 'cursor-default'}
-                  overflow-hidden
+                  ${isReordering ? 'overflow-visible' : 'overflow-hidden'}
                 `}
                 onTouchStart={(e) => onStart(e, code)}
                 onTouchMove={onMove}
@@ -473,12 +497,12 @@ export default function App() {
                 >
                   <div className="flex-shrink-0 z-10 flex items-center gap-2">
                     {isReordering && (
-                      <div className="flex flex-col items-center mr-1 gap-1">
+                      <div className="flex flex-col items-center mr-1 gap-0">
                         <button onClick={(e) => { e.stopPropagation(); moveItem(index, 'up') }} disabled={index === 0} className={`p-0.5 rounded ${index === 0 ? 'opacity-20' : 'hover:bg-slate-700'} ${theme.subText}`}>
-                          <ChevronUp size={20} />
+                          <ChevronUp size={16} />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); moveItem(index, 'down') }} disabled={index === activeCurrencies.length - 1} className={`p-0.5 rounded ${index === activeCurrencies.length - 1 ? 'opacity-20' : 'hover:bg-slate-700'} ${theme.subText}`}>
-                          <ChevronDown size={20} />
+                          <ChevronDown size={16} />
                         </button>
                       </div>
                     )}
@@ -496,26 +520,43 @@ export default function App() {
                     ${isAnchor ? `${theme.inputBg} ${theme.inputBorder}` : `${theme.inputBg} border-transparent`}
                     ${isReordering ? 'opacity-50 pointer-events-none' : ''}
                   `}>
-                      <input
-                        type="text"
-                        disabled={isReordering}
-                        inputMode={CURRENCY_RULES[code]?.decimals === 0 ? "numeric" : "decimal"}
-                        value={displayValue}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (code !== anchorCode) {
-                            handleFocusCurrency(code);
-                          }
-                        }}
-                        onFocus={() => {
-                          if (code !== anchorCode) {
-                            handleFocusCurrency(code);
-                          }
-                        }}
-                        onChange={(e) => handleInputChange(code, e.target.value)}
-                        style={{ fontSize: `${fontSize}px`, lineHeight: '1.2' }}
-                        className={`w-full bg-transparent text-right font-mono outline-none font-bold z-10 cursor-text min-w-0 ${isDarkMode ? 'text-white placeholder-slate-600' : 'text-gray-900 placeholder-gray-300'}`}
-                      />
+                      {isAnchor ? (
+                        <div className="relative w-full h-full flex items-center">
+                          {/* Styled Overlay */}
+                          <div
+                            className={`absolute inset-0 w-full text-right font-sans tabular-nums font-bold pointer-events-none flex items-center justify-end ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
+                            style={{ fontSize: `${fontSize}px`, lineHeight: '1.2' }}
+                            aria-hidden="true"
+                          >
+                            {displayValue.split('').map((char, i) =>
+                              char === ',' ? <span key={i} className="opacity-40">,</span> : char
+                            )}
+                          </div>
+                          {/* Transparent Input */}
+                          <input
+                            autoFocus
+                            type="text"
+                            disabled={isReordering}
+                            inputMode={CURRENCY_RULES[code]?.decimals === 0 ? "numeric" : "decimal"}
+                            value={displayValue}
+                            onChange={(e) => handleInputChange(code, e.target.value)}
+                            style={{ fontSize: `${fontSize}px`, lineHeight: '1.2', color: 'transparent', caretColor: isDarkMode ? 'white' : 'black' }}
+                            className={`w-full bg-transparent text-right font-sans tabular-nums outline-none font-bold z-10 cursor-text min-w-0 placeholder-transparent`}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); handleFocusCurrency(code); }}
+                          onFocus={() => handleFocusCurrency(code)}
+                          style={{ fontSize: `${fontSize}px`, lineHeight: '1.2' }}
+                          className={`w-full bg-transparent text-right font-sans tabular-nums outline-none font-bold z-10 cursor-text min-w-0 ${isDarkMode ? 'text-white' : 'text-gray-900'} whitespace-nowrap overflow-hidden`}
+                        >
+                          {displayValue.split('').map((char, i) =>
+                            char === ',' ? <span key={i} className="opacity-50">,</span> : char
+                          )}
+                        </div>
+                      )}
                       <span className={`ml-2 ${theme.subText} font-bold text-xs w-8 text-right flex-shrink-0`}>
                         {info.code}
                       </span>
@@ -541,7 +582,7 @@ export default function App() {
                   {isReordering && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleRemoveCurrency(code); }}
-                      className={`absolute -right-2 -top-2 p-1.5 rounded-full shadow-md border z-50 transition-all scale-100 opacity-100 ${isDarkMode ? 'bg-[#2f3344] border-[#3b3f54] text-slate-400 hover:text-red-400 hover:bg-[#363a4d]' : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
+                      className={`absolute -right-3 -top-3 p-1.5 rounded-full shadow-md border z-50 transition-all scale-100 opacity-100 ${isDarkMode ? 'bg-[#2f3344] border-[#3b3f54] text-slate-400 hover:text-red-400 hover:bg-[#363a4d]' : 'bg-white border-gray-200 text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
                       title="Remove"
                     >
                       <X size={14} strokeWidth={2.5} />
@@ -557,15 +598,13 @@ export default function App() {
           {/* Input Field (replaces Button) */}
           <div
             className={`w-full font-medium py-3 rounded-2xl border flex items-center gap-3 px-4 transition-colors shadow-sm
-              ${isDarkMode ? 'bg-[#252836] border-[#2f3344]' : 'bg-white border-gray-200'}
-              ${isReordering ? 'opacity-50 cursor-not-allowed' : ''}
-              ${isAdding ? (isDarkMode ? 'border-orange-500/50' : 'border-orange-200') : ''}
-            `}
+                ${isDarkMode ? 'bg-[#252836] border-[#2f3344]' : 'bg-white border-gray-200'}
+                ${isAdding ? (isDarkMode ? 'border-orange-500/50' : 'border-orange-200') : ''}
+              `}
           >
             <Plus size={18} className={theme.subText} />
             <input
               type="text"
-              disabled={isReordering}
               placeholder="Add a currency"
               value={searchTerm}
               onFocus={() => setIsAdding(true)}
@@ -650,7 +689,7 @@ export default function App() {
         </div>
 
         {/* Footer Wrapper */}
-        <div className="flex flex-col gap-2 mt-auto relative z-10 pb-4">
+        <div className="flex flex-col gap-2 mt-auto relative z-10 pb-2">
           <div className="flex gap-2">
             <button
               onClick={() => setIsP2PMode(!isP2PMode)}
@@ -674,7 +713,7 @@ export default function App() {
               className={`
                   flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl border transition-all
                   ${isReordering
-                  ? `${isDarkMode ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`
+                  ? `${isDarkMode ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : 'bg-orange-50 border-orange-200 text-orange-600'}`
                   : `${theme.btnDefault} ${theme.btnHover}`
                 }
                 `}
@@ -713,13 +752,18 @@ export default function App() {
             </button>
           </div>
 
-          <div className={`group relative w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-xs font-medium border ${theme.btnDefault} cursor-default select-none`}>
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]"></span>
+          <div
+            onClick={() => setShowSourceInfo(!showSourceInfo)}
+            onMouseEnter={() => setShowSourceInfo(true)}
+            onMouseLeave={() => setShowSourceInfo(false)}
+            className={`relative w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-xs font-medium border ${theme.btnDefault} cursor-pointer select-none`}
+          >
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_5px_rgba(249,115,22,0.5)]"></span>
             <span>
-              Live • {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'shortOffset' })} • Base: {anchorCode}
+              Live • {currentTime.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short' })} • Base: {anchorCode}
             </span>
 
-            <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 rounded-xl shadow-xl border invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all z-50 flex flex-col gap-2 ${isDarkMode ? 'bg-[#252836] border-[#3b3f54] text-slate-300' : 'bg-white border-gray-200 text-gray-600'}`}>
+            <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 rounded-xl shadow-xl border transition-all z-50 flex flex-col gap-2 ${isDarkMode ? 'bg-[#252836] border-[#3b3f54] text-slate-300' : 'bg-white border-gray-200 text-gray-600'} ${showSourceInfo ? 'visible opacity-100' : 'invisible opacity-0'}`}>
               <div className="flex items-center gap-2 text-[10px]">
                 <Database size={12} className="text-blue-400" />
                 <span>Fiat: ExchangeRate-API</span>
@@ -736,14 +780,23 @@ export default function App() {
       </div>
 
       <style>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+        @keyframes float-1 {
+          0%, 100% { transform: translate(-50%, -50%) translate(0, 0) scale(1); opacity: 0.4; }
+          33% { transform: translate(-50%, -50%) translate(20vw, 10vh) scale(1.2); opacity: 0.6; }
+          66% { transform: translate(-50%, -50%) translate(-20vw, 20vh) scale(0.8); opacity: 0.3; }
         }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s infinite ease-in-out;
+        @keyframes float-2 {
+          0%, 100% { transform: translate(-50%, -50%) translate(-10vw, -10vh) scale(0.9); opacity: 0.3; }
+          50% { transform: translate(-50%, -50%) translate(15vw, 15vh) scale(1.1); opacity: 0.5; }
         }
+        @keyframes float-3 {
+          0%, 100% { transform: translate(-50%, -50%) translate(10vw, 20vh) scale(1.1); opacity: 0.5; }
+          50% { transform: translate(-50%, -50%) translate(-15vw, -10vh) scale(0.8); opacity: 0.3; }
+        }
+        .animate-float-1 { animation: float-1 20s infinite ease-in-out; }
+        .animate-float-2 { animation: float-2 25s infinite ease-in-out; }
+        .animate-float-3 { animation: float-3 30s infinite ease-in-out; }
       `}</style>
-    </div>
+    </div >
   );
 }
