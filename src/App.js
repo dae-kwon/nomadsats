@@ -4,9 +4,11 @@ import { Plus, X, Search, RefreshCw, ArrowUpDown, Info, Wallet, AlertTriangle, P
 /**
  * Live Multi-Currency Converter
  * * Updates:
- * - LAYOUT FIX: "Add Currency" dropdown z-index increased to 100 to appear OVER the footer settings.
- * - TIMEZONE: Clock now shows explicit offset (e.g., GMT+7) for accuracy.
- * - UI: Subtle active card shadow, bottom-aligned footer.
+ * - MOBILE FIX: Used 100dvh to fix top/bottom whitespace on mobile browsers.
+ * - LAYOUT: Removed top padding (pt-16) so first card is at the top.
+ * - UI: Flags are slightly larger (w-7 h-7 container), SVGs kept same visual size (w-6 h-6 centered).
+ * - ADD MENU: Now a full-screen modal overlay (fixed inset-0) that fills the screen for better visibility.
+ * - INPUT: Search input is text-base to prevent iOS auto-zoom.
  */
 
 // Custom SVG Icons for Crypto
@@ -181,13 +183,12 @@ export default function App() {
   }, [isLive, loading]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (addDropdownRef.current && !addDropdownRef.current.contains(event.target)) {
-        setIsAdding(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // Handle ESC to close modal
+    const handleEsc = (e) => {
+        if (e.key === 'Escape') setIsAdding(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
   // --- Logic ---
@@ -301,8 +302,8 @@ export default function App() {
   };
 
   const getCurrencyIcon = (info) => {
-    if (info.flag === 'BTC_LOGO') return <BitcoinLogo />;
-    if (info.flag === 'USDT_LOGO') return <TetherLogo />;
+    if (info.flag === 'BTC_LOGO') return <div className="w-6 h-6"><BitcoinLogo /></div>;
+    if (info.flag === 'USDT_LOGO') return <div className="w-6 h-6"><TetherLogo /></div>;
     return <span className="text-2xl leading-none select-none">{info.flag}</span>;
   };
 
@@ -328,7 +329,8 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans flex flex-col items-center justify-between p-2 sm:p-4 transition-colors duration-300 relative overflow-hidden pt-16`}>
+    // UPDATED: min-h-[100dvh] for mobile viewport fix
+    <div className={`min-h-[100dvh] ${theme.bg} ${theme.text} font-sans flex flex-col items-center justify-between p-2 sm:p-4 transition-colors duration-300 relative overflow-hidden pt-2`}>
       
       <div className={`absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-orange-500/20 rounded-full blur-[80px] pointer-events-none animate-pulse-slow ${isDarkMode ? 'opacity-60' : 'opacity-40'}`}></div>
 
@@ -371,7 +373,8 @@ export default function App() {
                      </div>
                    )}
                    <div className={`flex flex-col items-center justify-center w-10 text-center`}>
-                        <div className="w-6 h-6 flex items-center justify-center">
+                        {/* UPDATED: w-7 h-7 for slightly bigger flag presence */}
+                        <div className="w-7 h-7 flex items-center justify-center">
                             {getCurrencyIcon(info)}
                         </div>
                    </div>
@@ -438,9 +441,9 @@ export default function App() {
           })}
         </div>
 
-        {/* Add Button & Dropdown */}
-        {/* UPDATED: Z-Index 100 ensures this layer floats above the footer controls */}
         <div className="relative z-[100]" ref={addDropdownRef}>
+          {/* Add Button */}
+          {/* Only visible if not reordering? Or visible but disabled? User asked for visible but inactive in edit mode. */}
           <button 
             disabled={isReordering}
             onClick={() => setIsAdding(!isAdding)}
@@ -453,35 +456,43 @@ export default function App() {
             <Plus size={18} className={theme.subText} />
           </button>
 
+          {/* Full Screen Modal for Add Currency */}
           {isAdding && (
-            <div className={`absolute left-0 right-0 top-full mt-2 ${theme.modalBg} border ${theme.modalBorder} rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[260px] animate-in fade-in zoom-in-95 duration-150`}>
-              <div className={`p-2 border-b ${theme.divider} flex items-center gap-2 sticky top-0 ${theme.modalBg} z-10`}>
-                <Search className={theme.subText} size={16} />
-                <input 
-                  autoFocus
-                  type="text" 
-                  placeholder="Search (e.g. BTC, Euro)" 
-                  className={`bg-transparent outline-none w-full text-sm ${isDarkMode ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const searchLower = searchTerm.toLowerCase();
-                      const filtered = ALL_CURRENCIES.filter(c => 
-                          !activeCurrencies.includes(c.code) && 
-                          (c.code.toLowerCase().includes(searchLower) || c.name.toLowerCase().includes(searchLower) || c.keywords?.some(k => k.includes(searchLower)))
-                      );
-                      if (filtered.length > 0) {
-                        handleAddCurrency(filtered[0].code);
-                      }
-                    }
-                  }}
-                />
-                <button onClick={() => setIsAdding(false)} className={`p-1.5 rounded-full ${isDarkMode ? 'bg-[#2f3344] text-slate-300 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'}`}>
-                  <X size={14} />
+            <div className={`fixed inset-0 z-[100] flex flex-col ${theme.modalBg} animate-in slide-in-from-bottom-10 duration-200`}>
+               {/* Modal Header */}
+              <div className={`p-4 border-b ${theme.divider} flex items-center gap-3 shrink-0 pt-safe-top`}>
+                <button onClick={() => setIsAdding(false)} className={`p-2 rounded-full ${isDarkMode ? 'bg-[#2f3344] text-slate-300 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'}`}>
+                  <ArrowUpDown className="rotate-90" size={18} />
                 </button>
+                <div className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border ${theme.inputBorder} ${theme.inputBg}`}>
+                   <Search className={theme.subText} size={18} />
+                   {/* UPDATED: text-base to prevent zoom */}
+                   <input 
+                    autoFocus
+                    type="text" 
+                    placeholder="Search currency..." 
+                    className={`bg-transparent outline-none w-full text-base ${isDarkMode ? 'text-white placeholder-slate-500' : 'text-gray-900 placeholder-gray-400'}`}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const searchLower = searchTerm.toLowerCase();
+                        const filtered = ALL_CURRENCIES.filter(c => 
+                            !activeCurrencies.includes(c.code) && 
+                            (c.code.toLowerCase().includes(searchLower) || c.name.toLowerCase().includes(searchLower) || c.keywords?.some(k => k.includes(searchLower)))
+                        );
+                        if (filtered.length > 0) {
+                          handleAddCurrency(filtered[0].code);
+                          setIsAdding(false);
+                        }
+                      }
+                    }}
+                  />
+                </div>
               </div>
-              <div className="overflow-y-auto flex-1 p-1">
+              
+              {/* List */}
+              <div className="overflow-y-auto flex-1 p-2">
                 {ALL_CURRENCIES
                   .filter(c => {
                     const searchLower = searchTerm.toLowerCase();
@@ -493,26 +504,26 @@ export default function App() {
                   .map(c => (
                   <button
                     key={c.code}
-                    onClick={() => handleAddCurrency(c.code)}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-left group ${isDarkMode ? 'hover:bg-[#2f3344]' : 'hover:bg-gray-50'}`}
+                    onClick={() => { handleAddCurrency(c.code); setIsAdding(false); }}
+                    className={`w-full flex items-center justify-between p-4 border-b ${theme.divider} last:border-0 active:bg-opacity-50 transition-colors text-left group ${isDarkMode ? 'hover:bg-[#2f3344]' : 'hover:bg-gray-50'}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 flex justify-center">
-                          {c.flag === 'BTC_LOGO' ? <BitcoinLogo /> : 
-                           c.flag === 'USDT_LOGO' ? <TetherLogo /> : 
-                           <span className="text-xl leading-none">{c.flag}</span>}
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 flex justify-center items-center">
+                          {c.flag === 'BTC_LOGO' ? <div className="w-8 h-8"><BitcoinLogo /></div> : 
+                           c.flag === 'USDT_LOGO' ? <div className="w-8 h-8"><TetherLogo /></div> : 
+                           <span className="text-3xl leading-none">{c.flag}</span>}
                       </div>
-                      <div className="flex items-center gap-2">
-                          <span className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{c.code}</span>
-                          <span className={`text-xs ${theme.subText} truncate`}>- {c.name}</span>
+                      <div className="flex flex-col">
+                          <span className={`font-bold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{c.code}</span>
+                          <span className={`text-xs ${theme.subText}`}>{c.name}</span>
                       </div>
                     </div>
-                    <Plus size={14} className={isDarkMode ? 'text-slate-500 group-hover:text-orange-500' : 'text-gray-400 group-hover:text-orange-500'} />
+                    <Plus size={20} className={isDarkMode ? 'text-slate-500 group-hover:text-orange-500' : 'text-gray-400 group-hover:text-orange-500'} />
                   </button>
                 ))}
                 {ALL_CURRENCIES.every(c => activeCurrencies.includes(c.code)) && (
-                  <div className={`p-4 text-center text-xs ${theme.subText}`}>
-                    <p>All currencies added</p>
+                  <div className={`p-8 text-center text-sm ${theme.subText}`}>
+                    <p>All available currencies added</p>
                   </div>
                 )}
               </div>
@@ -521,7 +532,7 @@ export default function App() {
         </div>
 
         {/* Footer Wrapper */}
-        <div className="flex flex-col gap-2 mt-2 relative z-10">
+        <div className="flex flex-col gap-2 mt-2 relative z-10 pb-4">
             <div className="flex gap-2">
               <button 
                 onClick={() => setIsP2PMode(!isP2PMode)}
@@ -555,11 +566,9 @@ export default function App() {
               </button>
             </div>
 
-            {/* Status Bar with Accurate Timezone Offset */}
             <div className={`group relative w-full rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-xs font-medium border ${theme.btnDefault} cursor-default select-none`}>
                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]"></span>
                <span>
-                 {/* UPDATED: Using timeZoneName: 'shortOffset' for specific GMT+7 style output */}
                  Live • {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'shortOffset' })} • Base: {anchorCode}
                </span>
 
