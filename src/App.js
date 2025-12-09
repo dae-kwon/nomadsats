@@ -141,8 +141,8 @@ const getTheme = (isDarkMode) => ({
 // --- Hooks ---
 const useCurrencyStorage = () => {
   const [anchorCode, setAnchorCode] = useState(() => getStorage('anchorCode', 'USD'));
-  const [anchorAmount, setAnchorAmount] = useState(() => getStorage('anchorAmount', '1'));
-  const [activeCurrencies, setActiveCurrencies] = useState(() => getStorage('activeCurrencies', ['SAT', 'USD', 'KRW']));
+  const [anchorAmount, setAnchorAmount] = useState(() => getStorage('anchorAmount', '100'));
+  const [activeCurrencies, setActiveCurrencies] = useState(() => getStorage('activeCurrencies', ['SAT', 'USD', 'EUR', 'GBP', 'JPY']));
   const [isDarkMode, setIsDarkMode] = useState(() => getStorage('isDarkMode',
     (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ?? true
   ));
@@ -509,7 +509,10 @@ const CurrencyCard = ({
                   autoFocus
                   type="text"
                   disabled={isReordering}
-                  inputMode={CURRENCY_RULES[code]?.decimals === 0 ? "numeric" : "decimal"}
+                  inputMode="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck="false"
                   value={displayValue}
                   onChange={(e) => onInputChange(code, e.target.value)}
                   onFocus={() => onFocus(code)}
