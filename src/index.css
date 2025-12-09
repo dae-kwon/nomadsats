@@ -11,3 +11,68 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+@media (hover: hover) {
+  .desktop-hover-slate-700:hover {
+    background-color: #334155;
+  }
+}
+
+@keyframes float-1 {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+    opacity: 0.4;
+  }
+
+  33% {
+    transform: translate(-50%, -50%) translate(20vw, 10vh) scale(1.2);
+    opacity: 0.6;
+  }
+
+  66% {
+    transform: translate(-50%, -50%) translate(-20vw, 20vh) scale(0.8);
+    opacity: 0.3;
+  }
+}
+
+@keyframes float-2 {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translate(-10vw, -10vh) scale(0.9);
+    opacity: 0.3;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translate(15vw, 15vh) scale(1.1);
+    opacity: 0.5;
+  }
+}
+
+@keyframes float-3 {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translate(10vw, 20vh) scale(1.1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translate(-15vw, -10vh) scale(0.8);
+    opacity: 0.3;
+  }
+}
+
+.animate-float-1 {
+  animation: float-1 20s infinite ease-in-out;
+}
+
+.animate-float-2 {
+  animation: float-2 25s infinite ease-in-out;
+}
+
+.animate-float-3 {
+  animation: float-3 30s infinite ease-in-out;
+}
