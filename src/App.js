@@ -728,6 +728,8 @@ export default function App() {
   };
 
   const handleInputChange = (code, value) => {
+    if (value.includes('=')) return;
+
     // Allow math characters
     const isMathExpression = /[\+\-\*\/\(\)%]/.test(value);
 
